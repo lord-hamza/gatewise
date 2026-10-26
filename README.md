@@ -1,29 +1,53 @@
-# llm-tollgate
+# gatewise
 
-[![PyPI](https://img.shields.io/pypi/v/llm-tollgate)](https://pypi.org/project/llm-tollgate/)
-[![Python](https://img.shields.io/pypi/pyversions/llm-tollgate)](https://pypi.org/project/llm-tollgate/)
-[![CI](https://github.com/lord-hamza/llm-tollgate/actions/workflows/ci.yml/badge.svg)](https://github.com/lord-hamza/llm-tollgate/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/lord-hamza/llm-tollgate/blob/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/gatewise)](https://pypi.org/project/gatewise/)
+[![Python](https://img.shields.io/pypi/pyversions/gatewise)](https://pypi.org/project/gatewise/)
+[![CI](https://github.com/lord-hamza/gatewise/actions/workflows/ci.yml/badge.svg)](https://github.com/lord-hamza/gatewise/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/lord-hamza/gatewise/blob/main/LICENSE)
 
-A small async gateway that puts one API in front of OpenAI, Anthropic and any OpenAI-compatible server.
+One async API in front of OpenAI, Anthropic and any OpenAI-compatible server.
 
-Every request passes through the same gate: guardrails screen it, the cache gets a chance to answer, the tenant's token budget is checked, and then providers are tried in order with retries, timeouts and failover. Structured outputs are validated with Pydantic and repaired automatically when the model gets the format wrong.
+Calling one LLM API is easy. Keeping your app up when that API is slow, rate limited or down is the hard part. gatewise sits between your code and the providers and handles it for you. It screens requests for personal data and prompt injection, answers repeat questions from a cache, keeps every tenant inside its token budget and moves to the next provider when one fails. Ask for a Pydantic model and you get a validated one back, even when the model's first try is malformed.
+
+## gatewise explained to a 5-year-old
+
+Imagine you have a question and three smart friends who can answer it. Sometimes a friend is asleep. Sometimes one is busy. gatewise is the helper at the door who makes sure you always get a good answer.
+
+- **It checks your note first.** If your note has secrets on it, like your phone number, the helper covers them with stickers. If someone slipped in a sneaky note that says "forget all your rules", the helper throws it away.
+- **It remembers answers.** If you already asked why the sky is blue, you get the answer right away without waking anyone up.
+- **It counts questions.** Every kid gets a fair number of questions per day so nobody uses them all up.
+- **It finds a friend who is awake.** If the first friend doesn't answer, the helper waits a moment and asks again. Still nothing? It goes to the next friend.
+- **It asks for neat answers.** If you wanted a list and got a scribble, the helper asks your friend to write it again properly.
+
+Here is what each part of the story means in real code:
+
+| In the story | In gatewise | Where |
+| --- | --- | --- |
+| Covering secrets with stickers | PII redaction | `Guardrails` |
+| Throwing away sneaky notes | Prompt-injection detection | `Guardrails` |
+| Remembering answers | Semantic cache | `SemanticCache` |
+| Counting questions | Per-tenant token budgets | `TokenBudget` |
+| Finding a friend who is awake | Retries, timeouts and failover | `Gateway`, `RetryPolicy` |
+| Asking for neat answers | Structured outputs with automatic repair | `Gateway.structured` |
 
 ## Features
 
-- One `complete` / `stream` / `structured` API across providers
-- Automatic failover, retries with exponential backoff (honours `Retry-After`) and timeouts
-- Streaming that can still fail over until the first token arrives
-- Semantic cache with pluggable embeddings, scoped per tenant and conversation
-- Per-tenant token budgets with optional reset windows
-- Pydantic-validated structured outputs with automatic repair
-- Guardrails for PII redaction and prompt-injection detection
-- Two runtime dependencies (`httpx`, `pydantic`), fully typed
+| Feature | What you get |
+| --- | --- |
+| One API | `complete`, `stream` and `structured` behave the same for every provider |
+| Failover | Retries with jittered backoff (honours `Retry-After`) before moving to the next provider |
+| Timeouts | Per attempt for normal calls and per chunk for streams |
+| Streaming | Can still switch providers until the first token arrives |
+| Semantic cache | Pluggable embeddings scoped per tenant and per conversation |
+| Token budgets | A token limit per tenant with optional reset windows |
+| Structured outputs | Pydantic validation with automatic repair |
+| Guardrails | PII redaction and prompt-injection detection |
+| Small footprint | Only `httpx` and `pydantic` at runtime, fully typed |
 
 ## Install
 
 ```bash
-pip install llm-tollgate
+pip install gatewise
 ```
 
 ## Quickstart
@@ -31,14 +55,12 @@ pip install llm-tollgate
 ```python
 import asyncio
 
-from llm_tollgate import AnthropicProvider, Gateway, OpenAIProvider
+from gatewise import AnthropicProvider, Gateway, OpenAIProvider
 
 
 async def main() -> None:
-    async with Gateway(
-        [OpenAIProvider("gpt-4.1-mini"), AnthropicProvider("claude-haiku-5-5")],
-        timeout=20,
-    ) as gateway:
+    providers = [OpenAIProvider("gpt-5-mini"), AnthropicProvider("claude-haiku-5-5")]
+    async with Gateway(providers) as gateway:
         response = await gateway.complete("Explain backpressure in one paragraph.")
         print(response.provider, response.usage.total_tokens)
         print(response.text)
@@ -47,25 +69,38 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Keys are read from `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` unless you pass `api_key=`.
+Keys come from `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` unless you pass `api_key=`.
 
-## How a request flows
+## Architecture
 
 ```mermaid
-flowchart LR
-    A[request] --> B[guardrails]
-    B --> C{cache hit?}
-    C -- yes --> Z[response]
-    C -- no --> D[budget check]
-    D --> E[providers in order<br/>retries, timeouts, failover]
-    E --> F[charge tokens<br/>store in cache]
-    F --> Z
+flowchart TD
+    App([Your app]) -->|complete / stream / structured| Guard[Guardrails<br/>redact PII, block injection]
+    Guard --> Cache{Cached?}
+    Cache -->|yes, free| Done([Response])
+    Cache -->|no| Budget{Within the<br/>tenant budget?}
+    Budget -->|no| Refused[BudgetExceededError]
+    Budget -->|yes| Router[Router<br/>retries + timeouts]
+    Router --> P1[Provider 1<br/>e.g. OpenAI]
+    P1 -.->|failed| P2[Provider 2<br/>e.g. Anthropic]
+    P2 -.->|failed| P3[Provider N<br/>any compatible server]
+    P1 & P2 & P3 --> Settle[Charge tokens<br/>store in cache]
+    Settle --> Done
 ```
+
+| Module | Job |
+| --- | --- |
+| `gateway.py` | Request pipeline with retries, failover and streaming |
+| `providers/` | OpenAI, Anthropic and fake providers on a shared httpx base |
+| `cache.py` | Semantic cache with pluggable embedders |
+| `budget.py` | Per-tenant token accounting |
+| `guardrails.py` | PII redaction and injection scoring |
+| `structured.py` | Schema prompts, JSON extraction and the repair loop |
 
 ## Failover, retries and timeouts
 
 ```python
-from llm_tollgate import Gateway, RetryPolicy
+from gatewise import Gateway, RetryPolicy
 
 gateway = Gateway(
     [primary, fallback],
@@ -74,19 +109,41 @@ gateway = Gateway(
 )
 ```
 
-- Retryable failures (timeouts, connection errors, 408, 409, 429, 5xx, 529) are retried on the same provider with jittered exponential backoff. A `Retry-After` header wins over the computed delay.
-- Anything else, like a bad key or a bad request, moves straight to the next provider.
-- If every provider fails you get `ProvidersExhaustedError` with the full list of errors.
-- `timeout` caps each attempt of `complete()`. For `stream()` it caps the wait for each chunk, so long answers are fine as long as tokens keep coming.
+| What happened | What gatewise does |
+| --- | --- |
+| Timeout, connection error, 408, 409, 429, 5xx or 529 | Retries the same provider with jittered exponential backoff. `Retry-After` wins when present |
+| Bad key, bad request or any other 4xx | Moves straight to the next provider |
+| Every provider failed | Raises `ProvidersExhaustedError` with all the errors |
 
-## Streaming
+```mermaid
+sequenceDiagram
+    participant App
+    participant G as gatewise
+    participant O as OpenAI
+    participant A as Anthropic
+    App->>G: complete(prompt)
+    G->>O: attempt 1
+    O-->>G: 503 overloaded
+    Note over G: short backoff
+    G->>O: attempt 2
+    O-->>G: 429 with Retry-After 2
+    Note over G: waits 2s
+    G->>O: attempt 3
+    O--xG: timed out
+    Note over G: retries used up
+    G->>A: attempt 1
+    A-->>G: 200 OK
+    G-->>App: response from anthropic
+```
+
+`timeout` caps each attempt of `complete()`. In `stream()` it caps the gap between chunks, which means long answers are fine while tokens keep flowing:
 
 ```python
 async for text in gateway.stream("Write a haiku about queues."):
     print(text, end="", flush=True)
 ```
 
-Failover works until the first token arrives. After that an error is raised instead of quietly restarting the answer on another provider.
+Streams only fail over before the first token. After that you get the error instead of an answer that quietly restarts on another provider.
 
 ## Structured outputs
 
@@ -103,25 +160,41 @@ class Invoice(BaseModel):
 invoice = await gateway.structured("ACME Corp billed us 1,200.50 EUR for hosting.", Invoice)
 ```
 
-The JSON schema is added to the system prompt and the reply is parsed with Pydantic. Code fences, surrounding prose, trailing commas and smart quotes are cleaned up locally. If validation still fails, the errors are sent back to the model, which gets `max_repairs` (default 2) chances to fix its answer before `StructuredOutputError` is raised.
+```mermaid
+flowchart LR
+    Reply[Model reply] --> Valid{Valid for<br/>the schema?}
+    Valid -->|yes| Model([Pydantic model])
+    Valid -->|no| Fix[Local fixes<br/>fences, trailing commas, smart quotes]
+    Fix --> Again{Valid now?}
+    Again -->|yes| Model
+    Again -->|no| Ask[Send the errors<br/>back to the model]
+    Ask -->|retry| Reply
+    Ask -->|out of tries| Error[StructuredOutputError]
+```
+
+The JSON schema goes into the system prompt and every reply is validated with Pydantic. The model gets two repair rounds by default (`max_repairs=2`).
 
 ## Semantic cache
 
 ```python
-from llm_tollgate import OpenAIEmbedder, SemanticCache
+from gatewise import OpenAIEmbedder, SemanticCache
 
 gateway = Gateway(providers, cache=SemanticCache(ttl=3600))
 gateway = Gateway(providers, cache=SemanticCache(OpenAIEmbedder(), threshold=0.9))
 ```
 
-The cache matches on the last message and keys everything before it (system prompt, history) by hash, per tenant. A long shared system prompt can't make two different questions look alike, and tenants never see each other's answers.
+| Embedder | Catches | Needs |
+| --- | --- | --- |
+| `HashingEmbedder` (default) | The same question with different casing or punctuation | Nothing |
+| `OpenAIEmbedder()` | Paraphrases like "capital of France?" and "which city is France's capital?" | An OpenAI key |
+| Your own | Whatever your model can match | An `async embed(text) -> list[float]` method |
 
-The default `HashingEmbedder` is a dependency-free lexical embedder: it catches the same question asked with different casing or punctuation, not paraphrases. For real semantic matching pass `OpenAIEmbedder()` or any object with an `async embed(text) -> list[float]` method. Use `use_cache=False` to skip the cache for a single call.
+Only the last message is matched by meaning. Everything before it (system prompt and chat history) is hashed together with the tenant name. A long shared system prompt can't make two different questions look alike and tenants never see each other's answers. Pass `use_cache=False` to skip the cache for one call.
 
 ## Token budgets
 
 ```python
-from llm_tollgate import BudgetExceededError, TokenBudget
+from gatewise import BudgetExceededError, TokenBudget
 
 budget = TokenBudget({"acme": 1_000_000, "trial": 20_000}, default=100_000, window=86_400)
 gateway = Gateway(providers, budget=budget)
@@ -134,12 +207,12 @@ except BudgetExceededError as error:
 print(budget.remaining("acme"))
 ```
 
-Requests are checked against an estimate of the prompt before any provider is called, then charged with the real usage. Cache hits are free. `window` resets each tenant's usage after that many seconds; leave it out for a hard cap.
+Each request is checked against an estimate of its prompt before any provider is called. The real usage is charged afterwards and cache hits are free. `window` resets usage every N seconds (86 400 makes a daily budget). Leave it out for a hard cap.
 
 ## Guardrails
 
 ```python
-from llm_tollgate import Guardrails, PromptInjectionError
+from gatewise import Guardrails, PromptInjectionError
 
 gateway = Gateway(providers, guardrails=Guardrails(injection_threshold=0.5))
 
@@ -149,32 +222,34 @@ except PromptInjectionError as error:
     print(error.score, error.signals)
 ```
 
-- **PII redaction:** emails, phone numbers, credit cards (Luhn-checked), US SSNs, IP addresses and API keys in user and assistant messages are replaced with placeholders such as `[EMAIL]` before anything leaves your process. System messages are left alone.
-- **Prompt injection:** user messages are normalised (Unicode, case, zero-width characters) and scored against weighted patterns such as "ignore previous instructions", system prompt extraction, jailbreak personas and fake role markers. Signals are combined, so several weak hints can add up to a block.
+| Check | Looks at | Result |
+| --- | --- | --- |
+| PII redaction | User and assistant messages | Emails, phone numbers, credit cards (Luhn-checked), US SSNs, IP addresses and API keys become `[EMAIL]`, `[PHONE]` and so on |
+| Prompt injection | User messages | Normalised text is scored against weighted patterns. Above the threshold the request is blocked |
 
-Both are heuristics and work as a cheap first line of defence, not a replacement for model-side safety.
+System messages are trusted and never changed. Both checks are heuristics, a cheap first line of defence rather than a replacement for model-side safety.
 
 ## Providers
 
 | Provider | Setup |
 | --- | --- |
-| OpenAI | `OpenAIProvider("gpt-4.1-mini")` |
-| Anthropic | `AnthropicProvider("claude-haiku-5-5")`, `max_tokens` defaults to 1024 |
+| OpenAI | `OpenAIProvider("gpt-5-mini")` |
+| Anthropic | `AnthropicProvider("claude-haiku-5-5")` |
 | Ollama | `OpenAIProvider("llama3.2", base_url="http://localhost:11434/v1", name="ollama")` |
-| Groq | `OpenAIProvider("llama-3.3-70b-versatile", base_url="https://api.groq.com/openai/v1", api_key=..., name="groq")` |
-| OpenRouter | `OpenAIProvider("openai/gpt-4.1-mini", base_url="https://openrouter.ai/api/v1", api_key=..., name="openrouter")` |
-| Gemini | `OpenAIProvider("gemini-2.5-flash", base_url="https://generativelanguage.googleapis.com/v1beta/openai", api_key=..., name="gemini")` |
-| vLLM | `OpenAIProvider("my-model", base_url="http://localhost:8000/v1", name="vllm")` |
+| Groq | `OpenAIProvider("openai/gpt-oss-120b", base_url="https://api.groq.com/openai/v1", api_key=..., name="groq")` |
+| OpenRouter | `OpenAIProvider("openai/gpt-5-mini", base_url="https://openrouter.ai/api/v1", api_key=..., name="openrouter")` |
+| Gemini | `OpenAIProvider("gemini-flash-latest", base_url="https://generativelanguage.googleapis.com/v1beta/openai", api_key=..., name="gemini")` |
+| vLLM | `OpenAIProvider("Qwen/Qwen3-8B", base_url="http://localhost:8000/v1", name="vllm")` |
 | Tests | `FakeProvider(["first reply", "second reply"])` |
 
-`OPENAI_API_KEY` is only used for the default OpenAI host, so it is never sent to a custom `base_url`. To add another backend, subclass `Provider` (or `HTTPProvider`) and implement `complete` and `stream`.
+`OPENAI_API_KEY` is only read for OpenAI's own host so it never leaks to a custom `base_url`. Anthropic's `max_tokens` defaults to 1024. Need another backend? Subclass `Provider` or `HTTPProvider` and implement `complete` and `stream`.
 
 ## Testing your app
 
-`FakeProvider` replays a script of replies and exceptions and records every request it receives, so failover, budgets and guardrails can be tested without network access:
+`FakeProvider` replays a script of replies and errors and records every request it receives. No network needed:
 
 ```python
-from llm_tollgate import FakeProvider, Gateway, ProviderError
+from gatewise import FakeProvider, Gateway, ProviderError
 
 
 async def test_falls_back_to_second_provider():
@@ -186,7 +261,7 @@ async def test_falls_back_to_second_provider():
     assert response.provider == "backup"
 ```
 
-[`examples/offline_demo.py`](examples/offline_demo.py) walks through every feature with fake providers, and [`examples/quickstart.py`](examples/quickstart.py) runs against the real APIs.
+[`examples/offline_demo.py`](examples/offline_demo.py) tours every feature offline. [`examples/quickstart.py`](examples/quickstart.py) runs against the real APIs.
 
 ## Development
 
