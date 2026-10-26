@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel
 
-from llm_tollgate import (
+from gatewise import (
     AnthropicProvider,
     Gateway,
     Guardrails,
@@ -20,7 +20,7 @@ class Ticket(BaseModel):
 
 async def main() -> None:
     gateway = Gateway(
-        [OpenAIProvider("gpt-4.1-mini"), AnthropicProvider("claude-haiku-5-5")],
+        [OpenAIProvider("gpt-5-mini"), AnthropicProvider("claude-haiku-5-5")],
         timeout=20,
         cache=SemanticCache(),
         budget=TokenBudget(default=50_000),

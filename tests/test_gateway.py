@@ -5,7 +5,7 @@ from contextlib import aclosing
 import pytest
 from pydantic import BaseModel
 
-from llm_tollgate import (
+from gatewise import (
     AnthropicProvider,
     BudgetExceededError,
     Chunk,
@@ -274,7 +274,7 @@ async def test_accepts_message_dicts_and_a_system_prompt() -> None:
 
 
 async def test_context_manager_closes_providers() -> None:
-    openai = OpenAIProvider("gpt-4o-mini", api_key="sk-test")
+    openai = OpenAIProvider("gpt-5-mini", api_key="sk-test")
     anthropic = AnthropicProvider("claude-haiku-5-5", api_key="sk-ant-test")
 
     async with Gateway([openai, anthropic]):

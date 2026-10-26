@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel
 
-from llm_tollgate import (
+from gatewise import (
     BudgetExceededError,
     FakeProvider,
     Gateway,

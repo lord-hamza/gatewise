@@ -4,8 +4,8 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 
-from llm_tollgate.errors import PromptInjectionError
-from llm_tollgate.types import Message
+from gatewise.errors import PromptInjectionError
+from gatewise.types import Message
 
 _OCTET = r"(?:25[0-5]|2[0-4]\d|1?\d?\d)"
 

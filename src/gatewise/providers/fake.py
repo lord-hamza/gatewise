@@ -2,8 +2,8 @@ import asyncio
 import re
 from collections.abc import AsyncGenerator, Sequence
 
-from llm_tollgate.providers.base import Provider
-from llm_tollgate.types import Chunk, CompletionRequest, CompletionResponse, Usage, estimate_tokens
+from gatewise.providers.base import Provider
+from gatewise.types import Chunk, CompletionRequest, CompletionResponse, Usage, estimate_tokens
 
 
 class FakeProvider(Provider):

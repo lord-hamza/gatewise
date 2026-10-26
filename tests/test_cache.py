@@ -5,9 +5,9 @@ from unittest.mock import Mock
 import httpx
 import pytest
 
-from llm_tollgate.cache import HashingEmbedder, OpenAIEmbedder, SemanticCache, cache_key
-from llm_tollgate.errors import ProviderError
-from llm_tollgate.types import CompletionResponse, Message
+from gatewise.cache import HashingEmbedder, OpenAIEmbedder, SemanticCache, cache_key
+from gatewise.errors import ProviderError
+from gatewise.types import CompletionResponse, Message
 
 QUESTION = "What is the capital of France?"
 

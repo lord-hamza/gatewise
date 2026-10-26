@@ -1,6 +1,6 @@
-from llm_tollgate.budget import TokenBudget
-from llm_tollgate.cache import Embedder, HashingEmbedder, OpenAIEmbedder, SemanticCache
-from llm_tollgate.errors import (
+from gatewise.budget import TokenBudget
+from gatewise.cache import Embedder, HashingEmbedder, OpenAIEmbedder, SemanticCache
+from gatewise.errors import (
     BudgetExceededError,
     GatewayError,
     PromptInjectionError,
@@ -8,17 +8,17 @@ from llm_tollgate.errors import (
     ProvidersExhaustedError,
     StructuredOutputError,
 )
-from llm_tollgate.gateway import Gateway, Prompt
-from llm_tollgate.guardrails import Guardrails, InjectionDetector, PIIRedactor
-from llm_tollgate.providers import (
+from gatewise.gateway import Gateway, Prompt
+from gatewise.guardrails import Guardrails, InjectionDetector, PIIRedactor
+from gatewise.providers import (
     AnthropicProvider,
     FakeProvider,
     HTTPProvider,
     OpenAIProvider,
     Provider,
 )
-from llm_tollgate.retry import RetryPolicy
-from llm_tollgate.types import (
+from gatewise.retry import RetryPolicy
+from gatewise.types import (
     Chunk,
     CompletionRequest,
     CompletionResponse,

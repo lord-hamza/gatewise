@@ -2,7 +2,7 @@ import math
 import time
 from collections.abc import Callable, Mapping
 
-from llm_tollgate.errors import BudgetExceededError
+from gatewise.errors import BudgetExceededError
 
 
 class TokenBudget:

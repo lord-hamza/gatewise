@@ -1,8 +1,8 @@
 import pytest
 
-from llm_tollgate.errors import PromptInjectionError
-from llm_tollgate.guardrails import Guardrails, InjectionDetector, PIIRedactor
-from llm_tollgate.types import Message
+from gatewise.errors import PromptInjectionError
+from gatewise.guardrails import Guardrails, InjectionDetector, PIIRedactor
+from gatewise.types import Message
 
 
 @pytest.mark.parametrize(

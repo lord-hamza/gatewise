@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/llm-tollgate
+      url: https://pypi.org/p/gatewise
     permissions:
       id-token: write
     steps:

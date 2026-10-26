@@ -7,8 +7,8 @@ from typing import Any
 
 import httpx
 
-from llm_tollgate.errors import ProviderError
-from llm_tollgate.types import Chunk, CompletionRequest, CompletionResponse
+from gatewise.errors import ProviderError
+from gatewise.types import Chunk, CompletionRequest, CompletionResponse
 
 RETRYABLE_STATUS = (408, 409, 429, 500, 502, 503, 504, 529)
 RETRYABLE_ERROR_TYPES = ("overloaded_error", "api_error", "rate_limit_error", "server_error")

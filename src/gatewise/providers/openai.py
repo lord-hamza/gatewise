@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from llm_tollgate.providers.base import HTTPProvider
-from llm_tollgate.types import Chunk, CompletionRequest, CompletionResponse, Usage
+from gatewise.providers.base import HTTPProvider
+from gatewise.types import Chunk, CompletionRequest, CompletionResponse, Usage
 
 OPENAI_URL = "https://api.openai.com/v1"
 
@@ -31,6 +31,14 @@ class OpenAIProvider(HTTPProvider):
         super().__init__(
             model, name=name, api_key=api_key, base_url=base_url, timeout=timeout, client=client
         )
+        # OpenAI itself wants max_completion_tokens, compatible servers still expect max_tokens.
+        self.max_tokens_field = (
+            "max_completion_tokens" if base_url.rstrip("/") == OPENAI_URL else "max_tokens"
+        )
+        # OpenAI itself wants max_completion_tokens, compatible servers still expect max_tokens.
+        self.max_tokens_field = (
+            "max_completion_tokens" if base_url.rstrip("/") == OPENAI_URL else "max_tokens"
+        )
 
     def payload(self, request: CompletionRequest) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -42,7 +50,7 @@ class OpenAIProvider(HTTPProvider):
         if request.temperature is not None:
             payload["temperature"] = request.temperature
         if request.max_tokens is not None:
-            payload["max_tokens"] = request.max_tokens
+            payload[self.max_tokens_field] = request.max_tokens
         return payload
 
     async def complete(self, request: CompletionRequest) -> CompletionResponse:

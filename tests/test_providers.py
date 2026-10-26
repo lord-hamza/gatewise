@@ -4,9 +4,9 @@ from typing import Any
 import httpx
 import pytest
 
-from llm_tollgate.errors import ProviderError
-from llm_tollgate.providers import AnthropicProvider, FakeProvider, OpenAIProvider, Provider
-from llm_tollgate.types import (
+from gatewise.errors import ProviderError
+from gatewise.providers import AnthropicProvider, FakeProvider, OpenAIProvider, Provider
+from gatewise.types import (
     Chunk,
     CompletionRequest,
     CompletionResponse,
@@ -43,15 +43,15 @@ async def collect(provider: Provider, request: CompletionRequest = REQUEST) -> l
 
 async def test_openai_complete() -> None:
     client, sent = serve(json=OPENAI_REPLY)
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     response = await provider.complete(REQUEST)
 
-    assert response == CompletionResponse("Hello!", "gpt-4o-mini", "openai", Usage(12, 3), "stop")
+    assert response == CompletionResponse("Hello!", "gpt-5-mini", "openai", Usage(12, 3), "stop")
     assert sent[0].url == "https://api.openai.com/v1/chat/completions"
     assert sent[0].headers["authorization"] == "Bearer sk-test"
     assert json.loads(sent[0].content) == {
-        "model": "gpt-4o-mini",
+        "model": "gpt-5-mini",
         "messages": [
             {"role": "system", "content": "Be brief."},
             {"role": "user", "content": "Hi there"},
@@ -60,16 +60,33 @@ async def test_openai_complete() -> None:
 
 
 @pytest.mark.parametrize(
-    "options", [{}, {"temperature": 0.0}, {"temperature": 0.7, "max_tokens": 64}]
+    ("options", "expected"),
+    [
+        ({}, {}),
+        ({"temperature": 0.0}, {"temperature": 0.0}),
+        ({"temperature": 0.7, "max_tokens": 64}, {"temperature": 0.7, "max_completion_tokens": 64}),
+    ],
 )
-async def test_openai_sends_sampling_options_only_when_set(options: dict[str, Any]) -> None:
+async def test_openai_sends_sampling_options_only_when_set(
+    options: dict[str, Any], expected: dict[str, Any]
+) -> None:
     client, sent = serve(json=OPENAI_REPLY)
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     await provider.complete(CompletionRequest(REQUEST.messages, **options))
 
     body = json.loads(sent[0].content)
-    assert {key: body[key] for key in ("temperature", "max_tokens") if key in body} == options
+    keys = ("temperature", "max_tokens", "max_completion_tokens")
+    assert {key: body[key] for key in keys if key in body} == expected
+
+
+async def test_compatible_servers_get_max_tokens() -> None:
+    client, sent = serve(json=OPENAI_REPLY)
+    provider = OpenAIProvider("llama3.2", base_url="http://localhost:11434/v1", client=client)
+
+    await provider.complete(CompletionRequest(REQUEST.messages, max_tokens=64))
+
+    assert json.loads(sent[0].content)["max_tokens"] == 64
 
 
 async def test_openai_stream() -> None:
@@ -84,7 +101,7 @@ async def test_openai_stream() -> None:
             {"choices": [{"delta": {"content": "after done"}}]},
         )
     )
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     chunks = await collect(provider)
 
@@ -103,7 +120,7 @@ async def test_openai_env_key_only_goes_to_openai(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("OPENAI_API_KEY", "sk-env")
     client, sent = serve(json=OPENAI_REPLY)
 
-    await OpenAIProvider("gpt-4o-mini", client=client).complete(REQUEST)
+    await OpenAIProvider("gpt-5-mini", client=client).complete(REQUEST)
     await OpenAIProvider("llama3.2", base_url="http://localhost:11434/v1/", client=client).complete(
         REQUEST
     )
@@ -213,7 +230,7 @@ async def test_http_errors_are_mapped(
     status: int, headers: dict[str, str], retryable: bool, retry_after: float | None, stream: bool
 ) -> None:
     client, _ = serve(status, headers=headers, json={"error": {"type": "error", "message": "nope"}})
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     with pytest.raises(ProviderError) as info:
         await (collect(provider) if stream else provider.complete(REQUEST))
@@ -231,7 +248,7 @@ async def test_transport_errors_are_retryable(error: httpx.HTTPError, stream: bo
         raise error
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     with pytest.raises(ProviderError) as info:
         await (collect(provider) if stream else provider.complete(REQUEST))
@@ -251,7 +268,7 @@ async def test_transport_errors_are_retryable(error: httpx.HTTPError, stream: bo
 )
 async def test_malformed_responses_raise_provider_error(body: dict[str, Any]) -> None:
     client, _ = serve(**body)
-    provider = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=client)
+    provider = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=client)
 
     with pytest.raises(ProviderError, match="malformed response"):
         await provider.complete(REQUEST)
@@ -282,7 +299,7 @@ async def test_fake_provider_stream_rebuilds_the_text() -> None:
 
 async def test_aclose_only_closes_clients_the_provider_created() -> None:
     injected = httpx.AsyncClient()
-    shared = OpenAIProvider("gpt-4o-mini", api_key="sk-test", client=injected)
+    shared = OpenAIProvider("gpt-5-mini", api_key="sk-test", client=injected)
     owned = AnthropicProvider("claude-haiku-5-5", api_key="sk-ant-test")
 
     await shared.aclose()

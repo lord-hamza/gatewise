@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "llm-tollgate"
+name = "gatewise"
 dynamic = ["version"]
 description = "Async LLM gateway with provider failover, semantic caching, per-tenant token budgets, guardrails and validated structured outputs."
 readme = "README.md"
@@ -42,9 +42,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lord-hamza/llm-tollgate"
-Repository = "https://github.com/lord-hamza/llm-tollgate"
-Issues = "https://github.com/lord-hamza/llm-tollgate/issues"
+Homepage = "https://github.com/lord-hamza/gatewise"
+Repository = "https://github.com/lord-hamza/gatewise"
+Issues = "https://github.com/lord-hamza/gatewise/issues"
 
 [dependency-groups]
 dev = [
@@ -55,10 +55,10 @@ dev = [
 ]
 
 [tool.hatch.version]
-path = "src/llm_tollgate/__init__.py"
+path = "src/gatewise/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/llm_tollgate"]
+packages = ["src/gatewise"]
 
 [tool.hatch.build.targets.sdist]
 include = ["/src", "/tests", "/examples"]

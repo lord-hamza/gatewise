@@ -1,9 +1,9 @@
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from llm_tollgate.errors import StructuredOutputError
-from llm_tollgate.structured import extract_json, generate_structured, parse_output, with_schema
-from llm_tollgate.types import Message
+from gatewise.errors import StructuredOutputError
+from gatewise.structured import extract_json, generate_structured, parse_output, with_schema
+from gatewise.types import Message
 
 
 class City(BaseModel):

@@ -6,8 +6,8 @@ from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
-from llm_tollgate.errors import StructuredOutputError
-from llm_tollgate.types import Message
+from gatewise.errors import StructuredOutputError
+from gatewise.types import Message
 
 T = TypeVar("T", bound=BaseModel)
 

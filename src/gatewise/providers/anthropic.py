@@ -5,8 +5,8 @@ from typing import Any
 
 import httpx
 
-from llm_tollgate.providers.base import HTTPProvider
-from llm_tollgate.types import Chunk, CompletionRequest, CompletionResponse, Usage
+from gatewise.providers.base import HTTPProvider
+from gatewise.types import Chunk, CompletionRequest, CompletionResponse, Usage
 
 ANTHROPIC_URL = "https://api.anthropic.com/v1"
 ANTHROPIC_VERSION = "2023-06-01"

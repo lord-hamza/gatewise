@@ -1,6 +1,6 @@
-from llm_tollgate.providers.anthropic import AnthropicProvider
-from llm_tollgate.providers.base import HTTPProvider, Provider
-from llm_tollgate.providers.fake import FakeProvider
-from llm_tollgate.providers.openai import OpenAIProvider
+from gatewise.providers.anthropic import AnthropicProvider
+from gatewise.providers.base import HTTPProvider, Provider
+from gatewise.providers.fake import FakeProvider
+from gatewise.providers.openai import OpenAIProvider
 
 __all__ = ["AnthropicProvider", "FakeProvider", "HTTPProvider", "OpenAIProvider", "Provider"]

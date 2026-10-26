@@ -13,8 +13,8 @@ from typing import Protocol
 
 import httpx
 
-from llm_tollgate.errors import ProviderError
-from llm_tollgate.types import CompletionResponse, Message
+from gatewise.errors import ProviderError
+from gatewise.types import CompletionResponse, Message
 
 _WORD = re.compile(r"\w+")
 _RECENT_VECTORS = 64

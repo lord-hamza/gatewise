@@ -6,14 +6,14 @@ from typing import Self, TypeVar
 
 from pydantic import BaseModel
 
-from llm_tollgate.budget import TokenBudget
-from llm_tollgate.cache import SemanticCache, cache_key
-from llm_tollgate.errors import ProviderError, ProvidersExhaustedError
-from llm_tollgate.guardrails import Guardrails
-from llm_tollgate.providers import Provider
-from llm_tollgate.retry import RetryPolicy
-from llm_tollgate.structured import generate_structured
-from llm_tollgate.types import (
+from gatewise.budget import TokenBudget
+from gatewise.cache import SemanticCache, cache_key
+from gatewise.errors import ProviderError, ProvidersExhaustedError
+from gatewise.guardrails import Guardrails
+from gatewise.providers import Provider
+from gatewise.retry import RetryPolicy
+from gatewise.structured import generate_structured
+from gatewise.types import (
     Chunk,
     CompletionRequest,
     CompletionResponse,
@@ -27,7 +27,7 @@ R = TypeVar("R")
 
 Prompt = str | Sequence[Message | Mapping[str, str]]
 
-logger = logging.getLogger("llm_tollgate")
+logger = logging.getLogger("gatewise")
 
 
 class Gateway:

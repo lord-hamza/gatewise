@@ -2,8 +2,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from llm_tollgate.budget import TokenBudget
-from llm_tollgate.errors import BudgetExceededError
+from gatewise.budget import TokenBudget
+from gatewise.errors import BudgetExceededError
 
 
 def test_unlimited_by_default() -> None:
