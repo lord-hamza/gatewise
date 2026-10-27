@@ -71,6 +71,65 @@ asyncio.run(main())
 
 Keys come from `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` unless you pass `api_key=`.
 
+## Step-by-step setup
+
+1. **Check your Python version.** gatewise needs Python 3.11 or newer.
+
+   ```bash
+   python3 --version
+   ```
+
+2. **Create a virtual environment** so the install stays out of your system Python.
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate        # Windows: .venv\Scripts\activate
+   ```
+
+3. **Install gatewise.**
+
+   ```bash
+   pip install gatewise
+   ```
+
+4. **Add your API keys.** You only need keys for the providers you actually use.
+
+   ```bash
+   export OPENAI_API_KEY="sk-..."
+   export ANTHROPIC_API_KEY="sk-ant-..."
+   ```
+
+   On Windows PowerShell use `$env:OPENAI_API_KEY="sk-..."` instead. No keys yet? Point `OpenAIProvider` at a local [Ollama](https://ollama.com) server or use `FakeProvider` (see [Providers](#providers)).
+
+5. **Make your first request.** Save the [Quickstart](#quickstart) code as `app.py` and run it.
+
+   ```bash
+   python app.py
+   ```
+
+6. **Switch on the features you need.** Each one is a single argument to `Gateway`.
+
+   ```python
+   from gatewise import Gateway, Guardrails, RetryPolicy, SemanticCache, TokenBudget
+
+   gateway = Gateway(
+       providers,
+       retry=RetryPolicy(max_attempts=3),
+       timeout=30.0,
+       cache=SemanticCache(ttl=3600),
+       budget=TokenBudget(default=100_000, window=86_400),
+       guardrails=Guardrails(),
+   )
+   ```
+
+7. **Watch it work.** Retries and failovers are logged under the `gatewise` logger.
+
+   ```python
+   import logging
+
+   logging.basicConfig(level=logging.INFO)
+   ```
+
 ## Architecture
 
 ```mermaid
