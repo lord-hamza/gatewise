@@ -1,26 +1,8 @@
-<p align="center">
-  <img src="docs/banner.svg" width="100%" alt="gatewise: one async Python API in front of OpenAI, Anthropic and any OpenAI-compatible server">
-</p>
+# gatewise
 
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?logo=python&logoColor=white" alt="Python 3.11 to 3.14">
-  <img src="https://img.shields.io/badge/tests-113%20passing-34D399" alt="113 tests passing">
-  <img src="https://img.shields.io/badge/mypy-strict-2A6DB2" alt="mypy strict">
-  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
-  <img src="https://img.shields.io/badge/pydantic-v2-E92063?logo=pydantic&logoColor=white" alt="Pydantic v2">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
-</p>
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)](pyproject.toml) [![mypy strict](https://img.shields.io/badge/mypy-strict-2A6DB2)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-<p align="center">
-  <a href="#quickstart">Quickstart</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#failover-retries-and-timeouts">Failover</a> ·
-  <a href="#structured-outputs">Structured outputs</a> ·
-  <a href="#semantic-cache">Semantic cache</a> ·
-  <a href="#guardrails">Guardrails</a>
-</p>
-
-<p align="center"><sub>Only httpx and pydantic at runtime · 113 tests · mypy --strict · Python 3.11 to 3.14</sub></p>
+<img src="docs/banner.svg" width="100%" alt="gatewise quickstart: two providers behind one gateway, OpenAI tried first and Anthropic taking over if it fails">
 
 One async API in front of OpenAI, Anthropic and any OpenAI-compatible server.
 
