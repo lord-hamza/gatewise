@@ -2,7 +2,7 @@
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB)](pyproject.toml) [![mypy strict](https://img.shields.io/badge/mypy-strict-2A6DB2)](pyproject.toml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-<img src="docs/banner.svg" width="100%" alt="gatewise quickstart: two providers behind one gateway, OpenAI tried first and Anthropic taking over if it fails">
+<img src="docs/quickstart.svg" width="100%" alt="gatewise quickstart: two providers behind one gateway, OpenAI tried first and Anthropic taking over if it fails">
 
 One async API in front of OpenAI, Anthropic and any OpenAI-compatible server.
 
